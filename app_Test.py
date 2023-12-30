@@ -38,24 +38,29 @@ print('Creating security group...')
 security_group = create_security_group(EC2, securityGroupName, vpc_id)
 
 
+# ##############  Mysql setup   ##############
 # Create 5 t2.micro instances
-print("Creating instance...")
+print("Creating mysql instance...")
 instance_ids = create_t2micro_instances(EC2, keyPairName, security_group['GroupId'], subnet)
 WAITER = EC2.get_waiter('instance_status_ok')
 WAITER.wait(InstanceIds=instance_ids)
-print("Instances are running")
+print("Mysql instances are running")
 
 public_dns_mysql_standalone_instance = instance_ids[0]['Reservations'][0]['Instances'][0]['PublicDnsName']
 public_dns_mysqlcluster_manager_instance = instance_ids[1]['Reservations'][0]['Instances'][0]['PublicDnsName']
+private_ip_address_mysqlcluster_manager_instance = instance_ids[1]['Reservations'][0]['Instances'][0]['PrivateIpAddress']
 public_dns_mysqlcluster_worker_instance_1 = instance_ids[2]['Reservations'][0]['Instances'][0]['PublicDnsName']
 public_dns_mysqlcluster_worker_instance_2 = instance_ids[3]['Reservations'][0]['Instances'][0]['PublicDnsName']
 public_dns_mysqlcluster_worker_instance_3 = instance_ids[4]['Reservations'][0]['Instances'][0]['PublicDnsName']
-
+private_ip_address_mysqlcluster_worker_instance_1 = instance_ids[2]['Reservations'][0]['Instances'][0]['PrivateIpAddress']
+private_ip_address_mysqlcluster_worker_instance_2 = instance_ids[3]['Reservations'][0]['Instances'][0]['PrivateIpAddress']
+private_ip_address_mysqlcluster_worker_instance_3 = instance_ids[4]['Reservations'][0]['Instances'][0]['PrivateIpAddress']
 os.system("chmod 700 " + keyPairName + ".pem")
 
 os.system("ssh -o StrictHostKeyChecking=no -i " + keyPairName + ".pem ubuntu@" + public_dns_mysqlcluster_manager_instance + " 'bash -s' < ./mysql_cluster_MasterNodeSetup_part2.sh "+
           public_dns_mysqlcluster_manager_instance + " " + public_dns_mysqlcluster_worker_instance_1 + " "+
-          public_dns_mysqlcluster_worker_instance_2 + " " + public_dns_mysqlcluster_worker_instance_3)
+          public_dns_mysqlcluster_worker_instance_2 + " " + public_dns_mysqlcluster_worker_instance_3 + " "+
+          public_dns_mysql_standalone_instance)
 time.sleep(30)
 
 os.system("ssh -o StrictHostKeyChecking=no -i " + keyPairName + ".pem ubuntu@" + public_dns_mysqlcluster_worker_instance_1 + " 'bash -s' < ./mysql_cluster_WorkerNodeSetup_part2.sh "+ public_dns_mysqlcluster_manager_instance)
@@ -70,9 +75,30 @@ time.sleep(30)
 
 
 
+# ##########################################
+# ############## Benchmarking ##############
 
+print("benchmarking for mysql standalone .....")
+os.system("ssh -o StrictHostKeyChecking=no -i " + keyPairName + ".pem ubuntu@" + public_dns_mysql_standalone_instance + " 'bash -s' < ./sysbench.sh 2>> benchmarking/standalone_result.txt")
+time.sleep(30)
+
+print("Start benchmarking for mysql cluster ......")
+os.system("ssh -o StrictHostKeyChecking=no -i " + keyPairName + ".pem ubuntu@" + public_dns_mysqlcluster_manager_instance + " 'bash -s' < ./sysbench.sh 2>> benchmarking/cluster_result.txt")
+time.sleep(30)
+
+print("Benchamarking completed...")
+
+
+
+# ################################################
+# ############## Delete everything  ##############
 input("Press Enter to delete everything...")
 
+# print("Terminating instance...")
+# terminate_instance(EC2, instance_id)
+# WAITER = EC2.get_waiter('instance_terminated')
+# WAITER.wait(InstanceIds=[instance_id])
+# print("Instance terminated")
 
 print("Terminating instances...")
 terminate_instances(EC2, instance_ids)
