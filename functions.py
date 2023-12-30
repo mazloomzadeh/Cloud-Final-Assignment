@@ -1,13 +1,13 @@
 # INSTANCE
 
-def create_t2micro_instance(client, keyPair, securityGroupId, subnetId):
-    print('Creating 1 instance of t2.micro...')
+def create_instance(client, keyPair, securityGroupId, subnetId, instance_type, instance_name, setupfile_name):
+    print('Creating 1 instance of ...'+ instance_type)
     response = client.run_instances(
 
         ImageId='ami-08c40ec9ead489470',
-        InstanceType='t2.micro',
+        InstanceType=instance_type,
         KeyName=keyPair,
-        UserData=open('mysql_standalone_setup.sh').read(),
+        UserData=open(setupfile_name).read(),
         SubnetId=subnetId,
         SecurityGroupIds=[
             securityGroupId,
@@ -23,7 +23,7 @@ def create_t2micro_instance(client, keyPair, securityGroupId, subnetId):
                 'Tags': [
                     {
                         'Key': 'Name',
-                        'Value': 'instance_mysql_standalone'
+                        'Value': instance_name
                     },
                 ]
             },
@@ -140,7 +140,7 @@ def create_security_group(ec2_client, security_group_name, vpc_id):
         )
         security_group_id = response['SecurityGroups'][0]['GroupId']
 
-    
+
         ec2_client.authorize_security_group_ingress(
             GroupId=security_group_id,
             IpPermissions=[
@@ -148,20 +148,20 @@ def create_security_group(ec2_client, security_group_name, vpc_id):
                     'IpProtocol': 'tcp',
                     'FromPort': 22,  # SSH port
                     'ToPort': 22,    # SSH port
-                    'IpRanges': [{'CidrIp': '0.0.0.0/0'}]  
+                    'IpRanges': [{'CidrIp': '0.0.0.0/0'}] 
                 },
                 {
                     'IpProtocol': 'tcp',
-                    'FromPort': 8080,
+                    'FromPort': 8080,  
                     'ToPort': 8080,    
-                    'IpRanges': [{'CidrIp': '0.0.0.0/0'}]  
-                },
+                    'IpRanges': [{'CidrIp': '0.0.0.0/0'}] #"Gatekeeper server port" 
+                }, 
                 {
                     'IpProtocol': 'tcp',
                     'FromPort': 3306,  
                     'ToPort': 3306,    
                     'IpRanges': [{'CidrIp': '0.0.0.0/0'}]  
-                },
+                },          
             ]
         )
 
