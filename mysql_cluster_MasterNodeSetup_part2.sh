@@ -31,7 +31,7 @@ datadir=/opt/mysqlcluster/deploy/ndb_data 	# Remote directory for the data files
 
 [mysqld]
 # SQL node options:
-hostname= $1 # In our case the MySQL server/client is on the same Droplet as the cluster manager
+hostname= $5 # In our case the MySQL server/client is on the same Droplet as the cluster manager
 NodeId=5
 
 EOF
@@ -44,8 +44,16 @@ scripts/mysql_install_db –no-defaults –datadir=/opt/mysqlcluster/deploy/mysq
 /opt/mysqlcluster/home/mysqlc/bin/ndb_mgmd -f /opt/mysqlcluster/deploy/conf/config.ini --initial --configdir=/opt/mysqlcluster/deploy/conf/
 /opt/mysqlcluster/home/mysqlc/bin/ndb_mgmd -e show
 
+# We’ll enable the service we just created so that the MySQL Cluster Manager starts on reboot:
+systemctl enable ndb_mgmd
 
-#We’ll add rules to allow local incoming connections from both data nodes:
+# start the service:
+sudo systemctl start ndb_mgmd
+
+# we can verify that the NDB Cluster Management service is running:
+sudo systemctl status ndb_mgmd
+
+#We’ll add rules to allow local incoming connections from three data nodes:
 ufw allow from $2
 ufw allow from $3
 ufw allow from $4
