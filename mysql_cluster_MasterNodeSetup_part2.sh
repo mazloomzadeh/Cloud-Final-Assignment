@@ -5,7 +5,7 @@ sudo -i
 cat <<EOF > /opt/mysqlcluster/deploy/conf/my.cnf
 [ndbd default]
 # Options affecting ndbd processes on all data nodes:
-NoOfReplicas=2	# Number of replicas
+NoOfReplicas=3	# Number of replicas
 datadir=/opt/mysqlcluster/deploy/ndb_data
 
 [ndb_mgmd]
@@ -31,8 +31,7 @@ datadir=/opt/mysqlcluster/deploy/ndb_data 	# Remote directory for the data files
 
 [mysqld]
 # SQL node options:
-hostname= $5 # In our case the MySQL server/client is on the same Droplet as the cluster manager
-NodeId=5
+NodeId=50
 
 EOF
 
@@ -42,23 +41,13 @@ cd /opt/mysqlcluster/home/mysqlc
 scripts/mysql_install_db –no-defaults –datadir=/opt/mysqlcluster/deploy/mysqld_data
 
 /opt/mysqlcluster/home/mysqlc/bin/ndb_mgmd -f /opt/mysqlcluster/deploy/conf/config.ini --initial --configdir=/opt/mysqlcluster/deploy/conf/
-/opt/mysqlcluster/home/mysqlc/bin/ndb_mgmd -e show
-
-# We’ll enable the service we just created so that the MySQL Cluster Manager starts on reboot:
-systemctl enable ndb_mgmd
-
-# start the service:
-sudo systemctl start ndb_mgmd
-
-# we can verify that the NDB Cluster Management service is running:
-sudo systemctl status ndb_mgmd
-
-#We’ll add rules to allow local incoming connections from three data nodes:
-ufw allow from $2
-ufw allow from $3
-ufw allow from $4
-
-
+/opt/mysqlcluster/home/mysqlc/bin/ndb_mgm -e show
 mysqld –defaults-file=/opt/mysqlcluster/deploy/conf/my.cnf –user=root &
-/opt/mysqlcluster/home/mysqlc/bin/ndb_mgmd -e show
+
+/opt/mysqlcluster/home/mysqlc/bin/ndb_mgm -e show
 mysql_secure_installation
+
+#Create a user
+mysql -Bse "CREATE USER 'myapp'@'%';GRANT ALL ON *.* TO 'myapp'@'%';"
+#Flush restrictions
+mysql -Bse "FLUSH PRIVILEGES;FLUSH TABLES WITH READ LOCK;UNLOCK TABLES;"

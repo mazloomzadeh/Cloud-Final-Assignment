@@ -59,8 +59,7 @@ os.system("chmod 700 " + keyPairName + ".pem")
 
 os.system("ssh -o StrictHostKeyChecking=no -i " + keyPairName + ".pem ubuntu@" + public_dns_mysqlcluster_manager_instance + " 'bash -s' < ./mysql_cluster_MasterNodeSetup_part2.sh "+
           public_dns_mysqlcluster_manager_instance + " " + public_dns_mysqlcluster_worker_instance_1 + " "+
-          public_dns_mysqlcluster_worker_instance_2 + " " + public_dns_mysqlcluster_worker_instance_3 + " "+
-          public_dns_mysql_standalone_instance)
+          public_dns_mysqlcluster_worker_instance_2 + " " + public_dns_mysqlcluster_worker_instance_3)
 time.sleep(30)
 
 os.system("ssh -o StrictHostKeyChecking=no -i " + keyPairName + ".pem ubuntu@" + public_dns_mysqlcluster_worker_instance_1 + " 'bash -s' < ./mysql_cluster_WorkerNodeSetup_part2.sh "+ public_dns_mysqlcluster_manager_instance)
