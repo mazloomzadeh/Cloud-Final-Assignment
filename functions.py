@@ -32,57 +32,6 @@ def create_instance(client, keyPair, securityGroupId, subnetId, instance_type, i
     return response["Instances"][0]["InstanceId"]
 
 
-def create_t2micro_instances(client, keyPair, securityGroupId, subnetId):
-    print('Creating 5 instances of t2.micro...')
-    counter = 1
-    ids = []
-    
-    for instance in range(5):
-        setup_file=''
-        name_of_instance=''
-        if counter==1:
-            setup_file= 'mysql_standalone_setup.sh'
-            name_of_instance = 'mysql_standalone_instance'
-        elif counter == 2:
-            setup_file= 'mysql_cluster_MasterNodeSetup_part1.sh'
-            name_of_instance= 'mysql_cluster_MasterNode_instance'
-        else:
-            setup_file = 'mysql_cluster_WorkerNodeSetup_part1.sh'
-            name_of_instance = 'mysql_cluster_WorkerNode'+str(counter-2)
-
-        response = client.run_instances(
-
-            ImageId='ami-08c40ec9ead489470',
-            InstanceType='t2.micro',
-            KeyName=keyPair,
-            UserData=open(setup_file).read(),
-            SubnetId=subnetId,
-            SecurityGroupIds=[
-                securityGroupId,
-            ],
-            MaxCount=1,
-            MinCount=1,
-            Monitoring={   
-                'Enabled': True
-            },
-            TagSpecifications=[
-                {
-                    'ResourceType': 'instance',
-                    'Tags': [
-                        {
-                            'Key': 'Name',
-                            'Value': name_of_instance
-                        },
-                    ]
-                },
-            ],
-        )
-        ids.append(response["Instances"][0]["InstanceId"])
-        counter = counter+1
-        
-    return ids
-
-
 
 def terminate_instance(client, instanceId):
     print('terminating instance:')
@@ -140,7 +89,7 @@ def create_security_group(ec2_client, security_group_name, vpc_id):
         )
         security_group_id = response['SecurityGroups'][0]['GroupId']
 
-
+        # Add inbound rules 
         ec2_client.authorize_security_group_ingress(
             GroupId=security_group_id,
             IpPermissions=[
@@ -158,9 +107,21 @@ def create_security_group(ec2_client, security_group_name, vpc_id):
                 }, 
                 {
                     'IpProtocol': 'tcp',
+                    'FromPort': 8080,  
+                    'ToPort': 8081,    
+                    'IpRanges': [{'CidrIp': '172.31.0.0/16'}] #"Proxy server port" 
+                },
+                {
+                    'IpProtocol': 'icmp',
+                    'FromPort': -1,  
+                    'ToPort': -1,    
+                    'IpRanges': [{'CidrIp': '0.0.0.0/0'}] #"Proxy server port" 
+                },
+                {
+                    'IpProtocol': 'tcp',
                     'FromPort': 3306,  
                     'ToPort': 3306,    
-                    'IpRanges': [{'CidrIp': '0.0.0.0/0'}]  
+                    'IpRanges': [{'CidrIp': '172.31.0.0/16'}] #"MySQL port" 
                 },          
             ]
         )
